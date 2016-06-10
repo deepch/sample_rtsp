@@ -1,9 +1,7 @@
 # rtsp client
 
 
-usage
-
-
+```go
 package main
 
 import (
@@ -31,3 +29,4 @@ func main() {
 	}
 	Client.Close()
 }
+```
