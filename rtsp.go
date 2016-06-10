@@ -17,7 +17,7 @@ import (
 )
 
 type RtspClient struct {
-	debug         bool
+	Debug         bool
 	rtsptimeout   time.Duration
 	rtptimeout    time.Duration
 	keepalivetime int
@@ -36,12 +36,12 @@ type RtspClient struct {
 	socket        net.Conn
 	firstvideots  int
 	firstaudiots  int
-	signals       chan bool
-	outgoing      chan []byte
+	Signals       chan bool
+	Outgoing      chan []byte
 }
 
 func RtspClientNew() *RtspClient {
-	return &RtspClient{cseq: 1, rtsptimeout: 3, rtptimeout: 10, keepalivetime: 20, signals: make(chan bool, 1), outgoing: make(chan []byte, 100000)}
+	return &RtspClient{cseq: 1, rtsptimeout: 3, rtptimeout: 10, keepalivetime: 20, Signals: make(chan bool, 1), Outgoing: make(chan []byte, 100000)}
 }
 func (this *RtspClient) Open(uri string) (err error) {
 	if err := this.ParseUrl(uri); err != nil {
@@ -88,7 +88,7 @@ func (this *RtspClient) Write(method string, track, add string, stage bool, nore
 		return err
 	}
 	message := method + " " + this.uri + track + " RTSP/1.0\r\nCSeq: " + strconv.Itoa(this.cseq) + "\r\n" + add + this.session + this.Dauth(method) + this.bauth + "User-Agent: Lavf57.8.102\r\n\r\n"
-	if this.debug {
+	if this.Debug {
 		log.Println(message)
 	}
 	if _, err := this.socket.Write([]byte(message)); err != nil {
@@ -136,7 +136,7 @@ func (this *RtspClient) Read() (buffer []byte, err error) {
 	if n, err := this.socket.Read(buffer); err != nil || n <= 2 {
 		return nil, err
 	} else {
-		if this.debug {
+		if this.Debug {
 			log.Println(string(buffer[:n]))
 		}
 		return buffer[:n], nil
@@ -209,7 +209,7 @@ func (this *RtspClient) ParseDescribe(message string) {
 			this.track = append(this.track, info.Control)
 		}
 	} else {
-		if this.debug {
+		if this.Debug {
 			log.Println("SDP not found")
 		}
 	}
@@ -236,7 +236,7 @@ func (this *RtspClient) ParsePlay(message string) {
 }
 func (this *RtspClient) RtspRtpLoop() {
 	defer func() {
-		this.signals <- true
+		this.Signals <- true
 	}()
 	header := make([]byte, 4)
 	payload := make([]byte, 16384)
@@ -257,7 +257,7 @@ func (this *RtspClient) RtspRtpLoop() {
 			this.socket.SetDeadline(time.Now().Add(this.rtptimeout * time.Second))
 		}
 		if n, err := io.ReadFull(this.socket, header); err != nil || n != 4 {
-			if this.debug {
+			if this.Debug {
 				log.Println("read header error", err)
 			}
 			return
@@ -265,7 +265,7 @@ func (this *RtspClient) RtspRtpLoop() {
 		if header[0] != 36 {
 			rtsp := false
 			if string(header) != "RTSP" {
-				if this.debug {
+				if this.Debug {
 					log.Println("desync strange data repair", string(header), header, this.uri)
 				}
 			} else {
@@ -275,7 +275,7 @@ func (this *RtspClient) RtspRtpLoop() {
 			for {
 				i++
 				if i > 4096 {
-					if this.debug {
+					if this.Debug {
 						log.Println("desync fatal miss position rtp packet", this.uri)
 					}
 					return
@@ -294,13 +294,13 @@ func (this *RtspClient) RtspRtpLoop() {
 							return
 						}
 						if !rtsp {
-							if this.debug {
+							if this.Debug {
 								log.Println("desync fixed ok", sync_b[0], this.uri, i, "afrer byte")
 							}
 						}
 						break
 					} else {
-						if this.debug {
+						if this.Debug {
 							log.Println("desync repair fail chanel incorect", sync_b[0], this.uri)
 						}
 					}
@@ -309,19 +309,19 @@ func (this *RtspClient) RtspRtpLoop() {
 		}
 		payloadLen := (int)(header[2])<<8 + (int)(header[3])
 		if payloadLen > 16384 || payloadLen < 12 {
-			if this.debug {
+			if this.Debug {
 				log.Println("fatal size desync", this.uri, payloadLen)
 			}
 			continue
 		}
 		if n, err := io.ReadFull(this.socket, payload[:payloadLen]); err != nil || n != payloadLen {
-			if this.debug {
+			if this.Debug {
 				log.Println("read payload error", payloadLen, err)
 			}
 			return
 		} else {
 			start_t = false
-			this.outgoing <- append(header, payload[:n]...)
+			this.Outgoing <- append(header, payload[:n]...)
 		}
 	}
 }
