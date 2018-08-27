@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
-	"github.com/nareix/rtsp/sdp"
+	"github.com/deepch/rtsp/sdp"
 	"html"
 	"io"
 	"log"
